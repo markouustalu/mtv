@@ -1,0 +1,45 @@
+# Marko TV Configuration
+
+server:
+  host: "0.0.0.0"           # Bind address (0.0.0.0 for all interfaces)
+  port: 8555                # HTTP server port
+
+media:
+  folder: "C:\\Users\\mailt\\Videos\\filmid"  # Absolute path to movie folder
+  extensions:
+    - ".mp4"
+    - ".mkv"
+  
+  # Subtitle file extensions to scan for
+  subtitle_extensions:
+    - ".srt"
+    - ".sub"
+    - ".idx"
+    - ".vtt"
+
+  # Audio/subtitle language preferences (ISO 639-1 codes)
+  preferred_languages:
+    audio: ["en"]
+    subtitle: ["en"]
+  
+  # Skip non-English audio if English is available
+  prefer_english: true
+
+streaming:
+  # Connection timeout in seconds
+  timeout: 300
+  
+  # Buffer size for streaming (bytes)
+  buffer_size: 8192
+
+# Fixed epoch for timetable (Unix timestamp)
+# All timetable calculations are relative to this point
+# Change this to adjust the "TV schedule"
+timetable:
+  epoch: 1704067200  # January 1, 2024 00:00:00 UTC
+
+logging:
+  level: "INFO"             # DEBUG, INFO, WARNING, ERROR
+  file: "logs/mtv.log"
+  max_size_mb: 10
+  backup_count: 3

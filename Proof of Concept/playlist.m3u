@@ -1,0 +1,6 @@
+#EXTM3U
+#EXTINF:-1,tgroup="Test Channel",MarkoTV
+#KODIPROP:inputstream=inputstream.ffmpegdirect
+#KODIPROP:mimetype=video/x-matroska
+#KODIPROP:inputstream.ffmpegdirect.open_mode=ffmpeg
+http://192.168.0.200:8555/stream.mkv
