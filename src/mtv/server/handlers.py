@@ -161,14 +161,22 @@ class StreamHandler(BaseHTTPRequestHandler):
         movie = playback.movie
         seek_time = playback.seek_time
 
+        # Get preferred languages from config
+        preferred_audio_langs = self.config.media.preferred_languages.get('audio', ['en', 'eng']) if self.config else ['en', 'eng']
+        preferred_subtitle_langs = self.config.media.preferred_languages.get('subtitle', ['en', 'eng']) if self.config else ['en', 'eng']
+
         # Get preferred audio stream
         audio_stream_idx = movie.get_preferred_audio_stream(
-            prefer_english=self.config.media.prefer_english
-        ) if self.config else None
+            prefer_english=self.config.media.prefer_english if self.config else True,
+            preferred_languages=preferred_audio_langs
+        )
 
         # Get preferred subtitle streams
         has_external = movie.external_subtitle is not None
-        subtitle_stream_indices = movie.get_preferred_subtitle_streams(has_external_subtitle=has_external)
+        subtitle_stream_indices = movie.get_preferred_subtitle_streams(
+            has_external_subtitle=has_external,
+            preferred_languages=preferred_subtitle_langs
+        )
 
         logger.info(
             f"Streaming {movie.filename} at "

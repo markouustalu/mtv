@@ -143,17 +143,38 @@ If your playlist is 10 hours total and the epoch was January 1, 2024:
    - Set as default
 
 2. **No external subtitle**:
-   - English subtitles preferred (`en` or `eng`)
-   - Normal subtitles before SDH
-   - If no English: Unknown language only
+   - Preferred languages from config (in order)
+   - Normal subtitles before SDH for same language
+   - If no preferred language: Unknown language only
    - Other languages excluded
    - First subtitle set as default
 
 ### Audio
 
 1. **Single audio stream**: Always included (no mute movies)
-2. **Multiple streams**: English preferred (`en` or `eng`)
-3. **Fallback**: First stream if no English
+2. **Multiple streams**: Preferred languages from config (in order)
+3. **Fallback**: First stream if no match
+
+### Configuration
+
+Edit `config/config.yaml`:
+
+```yaml
+media:
+  preferred_languages:
+    audio: ["en", "eng", "es"]      # English first, then Spanish
+    subtitle: ["en", "eng"]         # English only
+```
+
+Languages are checked in order - first match wins. Common codes:
+- `en`/`eng` (English)
+- `es` (Spanish)
+- `fr` (French)
+- `de` (German)
+- `it` (Italian)
+- `pt` (Portuguese)
+- `ru` (Russian)
+- `ja` (Japanese)
 
 ## Project Structure
 

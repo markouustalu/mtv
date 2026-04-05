@@ -18,10 +18,13 @@ media:
     - ".idx"
     - ".vtt"
 
-  # Audio/subtitle language preferences (ISO 639-1 codes)
+  # Audio/subtitle language preferences (ISO 639-1/639-2 codes)
+  # Languages are checked in order - first match wins
+  # Common codes: en (English), es (Spanish), fr (French), de (German), 
+  #               it (Italian), pt (Portuguese), ru (Russian), ja (Japanese)
   preferred_languages:
-    audio: ["en"]
-    subtitle: ["en"]
+    audio: ["en", "eng"]           # English audio preferred (both 2 and 3 letter codes)
+    subtitle: ["en", "eng"]        # English subtitles preferred
   
   # Skip non-English audio if English is available
   prefer_english: true
