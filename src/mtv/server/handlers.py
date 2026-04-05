@@ -27,6 +27,18 @@ class StreamHandler(BaseHTTPRequestHandler):
     def log_message(self, format, *args):
         """Suppress default HTTP logging - we do our own"""
         pass
+
+    def handle(self):
+        """Handle requests with connection error handling"""
+        try:
+            super().handle()
+        except (ConnectionResetError, BrokenPipeError) as e:
+            # Client disconnected abruptly - this is normal
+            logger.debug(f"Client disconnected: {e}")
+        except Exception as e:
+            # Log other exceptions but don't crash
+            logger.error(f"Unexpected error handling request: {e}")
+            raise
     
     def _timestamp(self) -> str:
         """Get current timestamp"""
