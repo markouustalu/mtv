@@ -1,4 +1,4 @@
-"""Main entry point for Marko TV"""
+"""Main entry point for MTV"""
 
 import signal
 import sys
@@ -25,7 +25,7 @@ def signal_handler(signum, frame):
 def main():
     """Main application entry point"""
     print("=" * 60)
-    print("Marko TV (MTV) - IPTV Streaming Server")
+    print("MTV - IPTV Streaming Server")
     print("=" * 60)
     
     # Register signal handlers
@@ -42,7 +42,7 @@ def main():
     
     # Setup logging
     logger = setup_logging(config.logging)
-    logger.info("Marko TV starting...")
+    logger.info("MTV starting...")
     
     # Scan media folder
     logger.info("Scanning media folder...")
@@ -71,14 +71,17 @@ def main():
     total_duration = library.get_total_duration()
     hours = int(total_duration // 3600)
     mins = int((total_duration % 3600) // 60)
-    
+
+    # Use advertised host for client-facing URLs
+    advertised_host = config.get_advertised_host()
+
     print("=" * 60)
     print(f"Server:    http://{config.server.host}:{config.server.port}")
     print(f"Movies:    {len(movies)}")
     print(f"Duration:  {hours}h {mins}m (total playlist)")
-    print(f"M3U:       http://{config.server.host}:{config.server.port}/m3u")
-    print(f"EPG:       http://{config.server.host}:{config.server.port}/epg")
-    print(f"Health:    http://{config.server.host}:{config.server.port}/health")
+    print(f"M3U:       http://{advertised_host}:{config.server.port}/m3u")
+    print(f"EPG:       http://{advertised_host}:{config.server.port}/epg")
+    print(f"Health:    http://{advertised_host}:{config.server.port}/health")
     print("=" * 60)
     print("Press Ctrl+C to stop")
     print()

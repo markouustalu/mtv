@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "mtv"
 version = "0.1.0"
-description = "Marko TV - Simple IPTV streaming server"
+description = "MTV - Simple IPTV streaming server"
 requires-python = ">=3.10"
 dependencies = [
     "pyyaml>=6.0",

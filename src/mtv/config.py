@@ -11,6 +11,7 @@ from pathlib import Path
 class ServerConfig:
     host: str = "0.0.0.0"
     port: int = 8555
+    advertised_host: str = ""  # LAN IP for clients to connect (empty = use host)
 
 
 @dataclass
@@ -49,6 +50,18 @@ class Config:
     streaming: StreamingConfig = field(default_factory=StreamingConfig)
     timetable: TimetableConfig = field(default_factory=TimetableConfig)
     logging: LoggingConfig = field(default_factory=LoggingConfig)
+
+    def get_advertised_host(self) -> str:
+        """Get the host address to advertise to clients"""
+        # Use advertised_host if set, otherwise fall back to bind host
+        # Avoid advertising 0.0.0.0 as it's not a valid client address
+        if self.server.advertised_host:
+            return self.server.advertised_host
+        elif self.server.host != "0.0.0.0":
+            return self.server.host
+        else:
+            # Default to localhost if nothing else is configured
+            return "localhost"
     
     @classmethod
     def load(cls, config_path: Optional[str] = None) -> 'Config':

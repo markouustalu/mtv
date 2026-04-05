@@ -155,54 +155,71 @@ class StreamHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'Service Unavailable')
             return
-        
+
         # Calculate current playback position
         playback = self.scheduler.get_current_playback()
         movie = playback.movie
         seek_time = playback.seek_time
-        
+
         # Get preferred audio stream
         audio_stream_idx = movie.get_preferred_audio_stream(
             prefer_english=self.config.media.prefer_english
         ) if self.config else None
-        
+
+        # Get preferred subtitle streams
+        has_external = movie.external_subtitle is not None
+        subtitle_stream_indices = movie.get_preferred_subtitle_streams(has_external_subtitle=has_external)
+
         logger.info(
             f"Streaming {movie.filename} at "
             f"{StreamProcess._format_time(seek_time)} "
-            f"(audio stream: {audio_stream_idx})"
+            f"(audio stream: {audio_stream_idx}, "
+            f"external subtitle: {has_external}, "
+            f"internal subtitle streams: {subtitle_stream_indices})"
         )
-        
+
         # Send response headers
+        logger.info("Sending HTTP headers")
         self.send_response(200)
         self.send_header('Content-Type', 'video/x-matroska')
         self.send_header('Accept-Ranges', 'bytes')
         self.send_header('Connection', 'keep-alive')
         self.end_headers()
-        
+        logger.info("HTTP headers sent")
+
         # Create and start stream
         stream = StreamProcess(
             movie=movie,
             seek_time=seek_time,
-            audio_stream_index=audio_stream_idx
+            audio_stream_index=audio_stream_idx,
+            subtitle_stream_indices=subtitle_stream_indices
         )
-        
+
         try:
+            logger.info("Starting FFmpeg process")
             stream.start()
-            
+            logger.info("FFmpeg process started")
+
             # Stream data to client
+            bytes_total = 0
+            chunks_sent = 0
             while True:
                 chunk = stream.read_chunk(self.config.streaming.buffer_size) if self.config else stream.read_chunk()
+
                 if not chunk:
-                    logger.info(f"Stream ended: {movie.filename}")
+                    # No data - stream ended
+                    logger.info(f"Stream ended: {movie.filename} (total: {bytes_total / (1024*1024):.1f} MB, chunks: {chunks_sent})")
                     break
-                
+
                 self.wfile.write(chunk)
                 self.wfile.flush()
-                
-                # Log progress every 10MB
-                if stream.bytes_sent % (10 * 1024 * 1024) < len(chunk):
-                    logger.debug(f"Sent {stream.bytes_sent / (1024*1024):.1f} MB")
-            
+                bytes_total += len(chunk)
+                chunks_sent += 1
+
+                # Log progress every 5MB
+                if bytes_total % (5 * 1024 * 1024) < len(chunk):
+                    logger.info(f"Sent {bytes_total / (1024*1024):.1f} MB ({chunks_sent} chunks)")
+
         except BrokenPipeError:
             logger.info(f"Client disconnected during stream")
         except ConnectionResetError:

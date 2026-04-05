@@ -71,17 +71,19 @@ def get_media_info(file_path: str) -> Optional[Movie]:
         height = 0
         audio_streams = []
         subtitle_streams = []
-        
+        audio_count = 0
+        subtitle_count = 0
+
         for stream in streams:
             codec_type = stream.get('codec_type')
             codec_name = stream.get('codec_name', '')
             lang = stream.get('tags', {}).get('language')
-            
+
             if codec_type == 'video':
                 video_codec = codec_name
                 width = stream.get('width', 0)
                 height = stream.get('height', 0)
-            
+
             elif codec_type == 'audio':
                 channels = stream.get('channels', 2)
                 sample_rate = int(stream.get('sample_rate', 48000)) if stream.get('sample_rate') else 48000
@@ -90,15 +92,19 @@ def get_media_info(file_path: str) -> Optional[Movie]:
                     codec=codec_name,
                     language=lang,
                     channels=channels,
-                    sample_rate=sample_rate
+                    sample_rate=sample_rate,
+                    type_index=audio_count  # 0-based index within audio streams
                 ))
-            
+                audio_count += 1
+
             elif codec_type == 'subtitle':
                 subtitle_streams.append(SubtitleStream(
                     index=stream.get('index', 0),
                     codec=codec_name,
-                    language=lang
+                    language=lang,
+                    type_index=subtitle_count  # 0-based index within subtitle streams
                 ))
+                subtitle_count += 1
         
         if not duration:
             logger.warning(f"No duration found for {file_path}")

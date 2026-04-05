@@ -1,21 +1,27 @@
-# Marko TV (MTV)
+# MTV
 
-A simple, stateless IPTV streaming server for Raspberry Pi 4. Think of it as a lightweight ErsatzTV that streams your movie collection as a continuous TV channel.
+A simple, stateless IPTV streaming server. Think of it as a lightweight ErsatzTV that streams your movie collection as a continuous TV channel.
 
 ## Features
 
 - **No transcoding**: Uses `-c copy` for zero CPU overhead
 - **Stateless design**: Fresh scan on every startup, no database
 - **Fixed epoch timetable**: Movie schedule is deterministic across restarts
-- **External subtitle support**: Auto-detects and embeds `.srt`, `.sub`, `.idx`, `.vtt`
-- **Language filtering**: Prefers English audio streams when available
-- **Kodi optimized**: M3U playlist with `inputstream.ffmpegdirect`
-- **EPG support**: XMLTV format with 7-day program guide
+- **Smart subtitle handling**: 
+  - External subtitles (`.srt`, `.sub`, `.idx`, `.vtt`) take priority
+  - Internal subtitles: prefers English, normal over SDH
+  - First subtitle set as default in player
+- **Smart audio selection**: 
+  - Prefers English audio (`en` or `eng`)
+  - Falls back to any audio (no mute movies)
+- **Kodi optimized**: M3U playlist with `inputstream.ffmpegdirect` and EPG support
+- **EPG support**: XMLTV format with fixed timetable (all movies or 24h minimum)
+- **Docker support**: Ready-to-use container with FFmpeg included
 
 ## How It Works
 
 1. On startup, scans your movie folder for `.mp4` and `.mkv` files
-2. Extracts metadata using `ffprobe` (duration, codecs, audio streams)
+2. Extracts metadata using `ffprobe` (duration, codecs, audio/subtitle streams)
 3. Shuffles movies randomly
 4. Calculates which movie should be playing based on a fixed epoch time
 5. Streams movies with `-c copy` (no transcoding)
@@ -44,7 +50,7 @@ venv\Scripts\activate  # Windows
 pip install -e .
 
 # Configure (edit config/config.yaml)
-# Set your movie folder path
+# Set your movie folder path and LAN IP
 ```
 
 ### Configuration
@@ -53,16 +59,19 @@ Edit `config/config.yaml`:
 
 ```yaml
 server:
-  host: "0.0.0.0"
+  host: "0.0.0.0"              # Bind to all interfaces
   port: 8555
+  advertised_host: "192.168.1.100"  # ← Your LAN IP (important for EPG!)
 
 media:
-  folder: "/path/to/movies"  # ← Change this!
+  folder: "/path/to/movies"     # ← Change this!
   prefer_english: true
 
 timetable:
-  epoch: 1704067200  # Fixed reference time (Unix timestamp)
+  epoch: 1704067200            # Fixed reference time (Unix timestamp)
 ```
+
+**Important**: Set `advertised_host` to your server's LAN IP address. This is used in the M3U and EPG URLs so clients can connect.
 
 ### Running
 
@@ -74,19 +83,33 @@ python -m mtv
 mtv
 ```
 
+### Docker (Recommended)
+
+```bash
+# Update movie path in docker-compose.yml
+# Then build and run
+docker compose up -d --build
+
+# Access at http://your-ip:8555/m3u
+```
+
+See [DOCKER.md](DOCKER.md) for complete Docker deployment guide.
+
 ### Kodi Setup
 
-1. Open Kodi → TV → Add Channel
-2. Enter M3U URL: `http://YOUR_IP:8555/m3u`
-3. Enter EPG URL: `http://YOUR_IP:8555/epg.xml`
-4. Done!
+1. Install `inputstream.ffmpegdirect` addon in Kodi
+2. Open Kodi → TV → Add-ons → PVR IPTV Simple Client → Settings
+3. Set path to M3U play list: `http://YOUR_IP:8555/m3u`
+4. Enable "M3U Extended Info"
+5. Set path to EPG: `http://YOUR_IP:8555/epg`
+6. Save and restart
 
 ## API Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
-| `/m3u` | M3U playlist for Kodi |
-| `/epg` or `/epg.xml` | XMLTV EPG data (7 days) |
+| `/m3u` | M3U playlist with EPG reference |
+| `/epg` or `/epg.xml` | XMLTV EPG data |
 | `/health` | Health check (JSON) |
 | `/stream/` | Current movie stream (based on timetable) |
 
@@ -101,6 +124,7 @@ current_position = (now - EPOCH) MOD total_playlist_duration
 This means:
 - The schedule is deterministic regardless of server restarts
 - All clients see the same movie at the same time
+- EPG times are fixed and don't change on refresh
 - Changing the `epoch` value shifts the entire schedule
 
 ### Example
@@ -109,6 +133,27 @@ If your playlist is 10 hours total and the epoch was January 1, 2024:
 - At exactly 10 hours after epoch → Movie #1 starts
 - At 15 hours after epoch → Movie #2 at 50%
 - At 20 hours after epoch → Back to Movie #1 (cycle 2)
+
+## Subtitle & Audio Selection
+
+### Subtitles
+
+1. **External subtitle present** (e.g., `movie.srt`):
+   - Only external subtitle included
+   - Set as default
+
+2. **No external subtitle**:
+   - English subtitles preferred (`en` or `eng`)
+   - Normal subtitles before SDH
+   - If no English: Unknown language only
+   - Other languages excluded
+   - First subtitle set as default
+
+### Audio
+
+1. **Single audio stream**: Always included (no mute movies)
+2. **Multiple streams**: English preferred (`en` or `eng`)
+3. **Fallback**: First stream if no English
 
 ## Project Structure
 
@@ -122,6 +167,8 @@ MTV/
 │   ├── scanner.py           # Media folder scanner
 │   ├── library.py           # In-memory library
 │   ├── scheduler.py         # Timetable algorithm
+│   ├── models/
+│   │   └── movie.py         # Movie data model
 │   ├── server/
 │   │   ├── handlers.py      # HTTP request handlers
 │   │   └── streamer.py      # FFmpeg process manager
@@ -131,7 +178,9 @@ MTV/
 │   └── utils/
 │       ├── ffprobe.py       # FFprobe wrapper
 │       └── ffmpeg.py        # FFmpeg command builder
-├── tests/                   # Unit tests
+├── Dockerfile               # Docker build
+├── docker-compose.yml       # Docker Compose config
+├── DOCKER.md               # Docker deployment guide
 ├── requirements.txt
 └── README.md
 ```
@@ -165,14 +214,14 @@ pip install -e .
 
 ### 3. Configure
 
-Edit `/opt/mtv/config/config.yaml` with your movie folder path.
+Edit `/opt/mtv/config/config.yaml` with your movie folder path and LAN IP.
 
 ### 4. Create Systemd Service
 
 ```bash
 sudo tee /etc/systemd/system/mtv.service << 'EOF'
 [Unit]
-Description=Marko TV Streaming Server
+Description=MTV Streaming Server
 After=network.target
 
 [Service]
@@ -210,12 +259,26 @@ sudo systemctl status mtv
 - Ensure `inputstream.ffmpegdirect` addon is installed
 - Check firewall allows port 8555
 - Try accessing `http://IP:8555/health` to verify server is running
+- Verify `advertised_host` is set to your LAN IP
+
+### Wrong audio language
+
+- Check that audio stream has `language` tag in metadata
+- MTV prefers English (`en` or `eng` tags)
+- If only one audio stream exists, it will be used regardless of language
 
 ### Subtitles not showing
 
-- Ensure subtitle file has same basename as movie
+- Ensure subtitle file has same basename as movie (for external)
 - Supported formats: `.srt`, `.sub`, `.idx`, `.vtt`
 - Example: `movie.mkv` → `movie.srt`
+- Internal subtitles: check language tags with `ffprobe`
+
+### EPG times keep changing
+
+- This shouldn't happen anymore (fixed in recent version)
+- EPG now uses fixed epoch timetable
+- Times are deterministic and won't shift on refresh
 
 ### High CPU usage
 
@@ -246,6 +309,7 @@ MTV is designed for simplicity:
 - **No transcoding**: Respects your hardware limitations
 - **No complexity**: YAML config, standard library HTTP server
 - **Pet project friendly**: Easy to understand, easy to modify
+- **Docker ready**: Deploy anywhere with a single command
 
 ## License
 
@@ -253,6 +317,6 @@ MIT
 
 ## Acknowledgments
 
-- Inspired by ErsatzTV but simplified for RPi 4
+- Inspired by ErsatzTV but simplified
 - Uses FFmpeg for streaming
 - Kodi's `inputstream.ffmpegdirect` for direct MKV playback

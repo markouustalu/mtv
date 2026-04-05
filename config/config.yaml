@@ -1,11 +1,12 @@
-# Marko TV Configuration
+# MTV Configuration
 
 server:
-  host: "0.0.0.0"           # Bind address (0.0.0.0 for all interfaces)
-  port: 8555                # HTTP server port
+  host: "0.0.0.0"                    # Bind address (0.0.0.0 for all interfaces)
+  port: 8555                         # HTTP server port
+  advertised_host: "127.0.0.1"   # LAN IP for clients (leave empty to use host)
 
 media:
-  folder: "C:\\Users\\mailt\\Videos\\filmid"  # Absolute path to movie folder
+  folder: "/movies"  # Change this. Absolute path to movie folder
   extensions:
     - ".mp4"
     - ".mkv"

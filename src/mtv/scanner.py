@@ -14,48 +14,49 @@ logger = logging.getLogger(__name__)
 def scan_media_folder(config: Config) -> List[Movie]:
     """
     Scan media folder for movies and their subtitles.
-    
+
     Args:
         config: Application configuration
-        
+
     Returns:
         List of Movie objects with metadata
     """
     media_path = Path(config.media.folder)
     movies = []
-    
+
     logger.info(f"Scanning media folder: {media_path}")
-    
-    # Find all media files (exclude subtitle files)
+
+    # Find all media files (exclude subtitle files and system files)
     media_files = []
     subtitle_exts = set(config.media.subtitle_extensions)
-    
+    media_exts = set(ext.lower() for ext in config.media.extensions)
+
     for ext in config.media.extensions:
         for file_path in media_path.glob(f'*{ext}'):
-            # Skip if it's actually a subtitle file
-            if file_path.suffix.lower() not in subtitle_exts:
+            # Only include if extension matches exactly (case-insensitive)
+            if file_path.suffix.lower() in media_exts:
                 media_files.append(file_path)
-        for file_path in media_path.glob(f'*{ext.upper()}'):
-            if file_path.suffix.lower() not in subtitle_exts:
-                media_files.append(file_path)
-    
+
     logger.info(f"Found {len(media_files)} media files")
-    
-    # Process each file
-    for file_path in media_files:
+
+    # Process each file with progress reporting
+    for idx, file_path in enumerate(media_files, start=1):
+        logger.info(f"Scanning [{idx}/{len(media_files)}]: {file_path.name}")
         movie = get_media_info(str(file_path))
         if movie:
             # Look for external subtitle
             subtitle_path = find_external_subtitle(
-                file_path, 
+                file_path,
                 config.media.subtitle_extensions
             )
             if subtitle_path:
                 movie.external_subtitle = str(subtitle_path.absolute())
                 logger.debug(f"Found subtitle for {movie.filename}: {subtitle_path.name}")
-            
+
             movies.append(movie)
-    
+        else:
+            logger.warning(f"Failed to scan: {file_path.name}")
+
     logger.info(f"Successfully scanned {len(movies)} movies")
     
     return movies
