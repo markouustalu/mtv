@@ -68,13 +68,26 @@ environment:
   - MTV_TIMETABLE_EPOCH=1704067200
 ```
 
-### Option 2: Custom config.yaml
+### Option 2: Mount config directory (recommended)
 
-Mount a custom configuration file:
+The container automatically looks for config in `/app/config/config.yaml`:
 
 ```yaml
 volumes:
-  - ./config/custom.yaml:/app/config/config.yaml:ro
+  - ./config:/app/config:ro  # Mount entire config directory
+```
+
+This is the easiest method - just place your `config.yaml` in a `config/` folder next to `docker-compose.yml`.
+
+### Option 3: Custom config path
+
+Use environment variable to specify exact config location:
+
+```yaml
+environment:
+  - MTV_CONFIG_PATH=/custom/path/config.yaml
+volumes:
+  - ./myconfig:/custom/path:ro
 ```
 
 ## Production Tips

@@ -1,5 +1,6 @@
 """Main entry point for MTV"""
 
+import os
 import signal
 import sys
 import logging
@@ -34,7 +35,28 @@ def main():
     
     # Load configuration
     try:
-        config_path = Path(__file__).parent.parent.parent / "config" / "config.yaml"
+        # Try multiple config paths for flexibility:
+        # 1. Environment variable (highest priority)
+        # 2. Current working directory (Docker)
+        # 3. Relative to script (local development)
+        config_path = None
+        
+        if env_path := os.getenv('MTV_CONFIG_PATH'):
+            config_path = Path(env_path)
+        else:
+            # Try current directory first (Docker)
+            cwd_config = Path.cwd() / "config" / "config.yaml"
+            if cwd_config.exists():
+                config_path = cwd_config
+            else:
+                # Fall back to script-relative path (local dev)
+                config_path = Path(__file__).parent.parent.parent / "config" / "config.yaml"
+        
+        if not config_path.exists():
+            print(f"ERROR: Configuration file not found: {config_path}")
+            print("Try setting MTV_CONFIG_PATH environment variable")
+            sys.exit(1)
+        
         config = Config.load(str(config_path))
     except Exception as e:
         print(f"ERROR: Failed to load configuration: {e}")
